@@ -13,7 +13,8 @@ public struct Video: Codable, Identifiable, Hashable {
     public var type: VideoType
     public var tags: [String]
     public var duration: Int
-    public var pictureID: String
+    /// Legacy Vimeo thumbnail ID; Pixabay no longer returns it (use `thumbnailURL`).
+    public var pictureID: String?
     public var items: [Item: Item.VideoItem]
     public var views: Int
     public var downloads: Int
@@ -37,7 +38,16 @@ public struct Video: Codable, Identifiable, Hashable {
             public var width: Int
             public var height: Int
             public var size: Int
+            public var thumbnail: URL?
         }
+    }
+
+    /// Preview image: Pixabay's per-size thumbnail, or the legacy Vimeo one for old responses.
+    public var thumbnailURL: URL? {
+        if let url = [Item.medium, .small, .large, .tiny].lazy.compactMap({ items[$0]?.thumbnail }).first {
+            return url
+        }
+        return pictureID.flatMap { URL(string: "https://i.vimeocdn.com/video/\($0)_720.jpg") }
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -70,11 +80,11 @@ public struct Video: Codable, Identifiable, Hashable {
         type = try container.decode(VideoType.self, forKey: .type)
         tags = (try container.decode(String.self, forKey: .tags)).components(separatedBy: ", ")
             .map { String($0) }
-        duration = try container.decode(Int.self, forKey: .duration)
-        pictureID = try container.decode(String.self, forKey: .pictureID)
-        views = try container.decode(Int.self, forKey: .views)
-        downloads = try container.decode(Int.self, forKey: .downloads)
-        comments = try container.decode(Int.self, forKey: .comments)
+        duration = try container.decodeIfPresent(Int.self, forKey: .duration) ?? 0
+        pictureID = try? container.decode(String.self, forKey: .pictureID)
+        views = try container.decodeIfPresent(Int.self, forKey: .views) ?? 0
+        downloads = try container.decodeIfPresent(Int.self, forKey: .downloads) ?? 0
+        comments = try container.decodeIfPresent(Int.self, forKey: .comments) ?? 0
 
         items = [:]
         let videosContainer = try container.nestedContainer(
@@ -107,10 +117,16 @@ public struct Video: Codable, Identifiable, Hashable {
         try container.encode(type, forKey: .type)
         try container.encode(tags.joined(separator: ", "), forKey: .tags)
         try container.encode(duration, forKey: .duration)
-        try container.encode(pictureID, forKey: .pictureID)
+        try container.encodeIfPresent(pictureID, forKey: .pictureID)
         try container.encode(views, forKey: .views)
         try container.encode(downloads, forKey: .downloads)
         try container.encode(comments, forKey: .comments)
+
+        var videosContainer = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .items)
+        try videosContainer.encodeIfPresent(items[.large], forKey: .large)
+        try videosContainer.encodeIfPresent(items[.medium], forKey: .medium)
+        try videosContainer.encodeIfPresent(items[.small], forKey: .small)
+        try videosContainer.encodeIfPresent(items[.tiny], forKey: .tiny)
 
         try container.encode(user.id, forKey: .userID)
         try container.encode(user.name, forKey: .username)

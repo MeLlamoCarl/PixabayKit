@@ -1,3 +1,10 @@
+> **Fork notice:** fork of [EthanLipnik/PixabayKit](https://github.com/EthanLipnik/PixabayKit)
+> used by [MeLlamoCarl/Meshy](https://github.com/MeLlamoCarl/Meshy). Original work by Ethan
+> Lipnik; licensed under the MIT License (see `LICENSE.txt`). Fork changes: decodes the current
+> API response (Pixabay dropped `picture_id`; thumbnails now come from each video size's
+> `thumbnail`), `PixabayError.invalidAPIKey`, `validateAPIKey()`, and requests that bypass the
+> shared URL cache so a revoked key is detected.
+
 
 # PixabayKit
 
